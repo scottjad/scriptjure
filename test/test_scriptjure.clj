@@ -52,9 +52,10 @@
 (deftest test-return
   (is (= (strip-whitespace (js (return 42))) "return 42;")))
 
-(deftest test-clj
+(deftest test-unquote
   (let [foo 42]
-    (is (= (js (clj foo)) "42"))))
+    (is (= (js (clj foo)) "42"))
+    (is (= (js ~foo) "42"))))
 
 (deftest test-str
   (is (= (strip-whitespace (js (str "s" 1)))

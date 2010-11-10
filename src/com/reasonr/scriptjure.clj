@@ -288,7 +288,7 @@
 (defn- unquote?
   "Tests whether the form is (unquote ...)."
   [form]
-  (and (seq? form) (symbol? (first form)) (= (symbol (name (first form))) 'clj)))
+  (and (seq? form) (symbol? (first form)) (#{'clj 'unquote} (symbol (name (first form))))))
 
 (defn handle-unquote [form]
   (second form))
