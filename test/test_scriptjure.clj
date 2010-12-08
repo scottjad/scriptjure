@@ -143,6 +143,10 @@
   (let [foo (fn [] (+ 1 2))]
     (is (= (cljs* foo) (js* (clj foo))))))
 
+(deftest test-typeof
+  (is (= (strip-whitespace (js (typeof x = "string")))
+         "(typeof x === \"string\")")))
+
 (deftest test-literal-fn-call
   (is (= (strip-whitespace (js ((fn [x] (return x)) 1)))
          "(function (x) { return x; })(1)"))
