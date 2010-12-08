@@ -191,10 +191,10 @@
   (str "(" "typeof " (emit var) " " (op-substitutions (symbol comp)) " " (emit type) ")"))
 
 (defmethod emit-special 'defined? [type [_ var]]
-  (str "typeof " (emit var) " !== \"undefined\" && " (emit var) " !== null"))
+  (str "(" "typeof " (emit var) " !== \"undefined\" && " (emit var) " !== null" ")"))
 
 (defmethod emit-special '? [type [_ test then else]]
-  (str (emit test) " ? " (emit then) " : " (emit else)))
+  (str "(" (emit test) " ? " (emit then) " : " (emit else) ")"))
 
 (defmethod emit-special 'and [type [_ & more]]
   (apply str (interpose "&&" (map emit more))))

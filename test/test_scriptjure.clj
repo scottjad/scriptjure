@@ -155,7 +155,7 @@
 
 (deftest test-ternary-if
   (is (= (strip-whitespace (js (? (= 1 2) 3 4)))
-         "(1 === 2) ? 3 : 4")))
+         "((1 === 2) ? 3 : 4)")))
 
 (deftest test-dec
   (is (= (strip-whitespace(js (dec x)))
