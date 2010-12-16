@@ -107,12 +107,13 @@
 (defn emit-suffix-unary [type [operator arg]]
   (str (emit arg) operator))
 
+(def op-substitutions {'= '=== '!= '!== 'not= '!==})
+
 (defn emit-infix [type [operator & args]]
   (when (and (not (chainable-infix-operators operator)) (> (count args) 2))
     (throw (Exception. (str "operator " operator " supports only 2 arguments"))))
-  (let [substitutions {'= '=== '!= '!== 'not= '!==}]
-    (str "(" (str/join (str " " (or (substitutions operator) operator) " ")
-                       (map emit args)) ")")))
+  (str "(" (str/join (str " " (or (op-substitutions operator) operator) " ")
+                     (map emit args)) ")"))
 
 (def var-declarations nil)
 
