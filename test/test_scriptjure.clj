@@ -16,17 +16,19 @@
   (is (= "/^abc/" (js #"^abc"))))
 
 (deftest test-var-expr
-  (is (= (strip-whitespace (js (var x)))) "var x;")
+  (is (= (strip-whitespace (js (var x))) "var x;"))
   (is (= (strip-whitespace (js (var x 42))) "var x; x = 42;"))
   (is (= (strip-whitespace (js (var x 1 y 2))) (strip-whitespace "var x, y; x = 1; y = 2;"))))
 
 (deftest test-invalid-variables-throw
-  (is (= (js valid_symbol)) "valid_symbol")
-  (is (thrown? Exception (js (var invalid-symbol 42)))))
+  (is (= (js valid_symbol)  "valid_symbol"))
+  (is (= (js valid-symbol) "validSymbol"))
+  (is (thrown? Exception (js (var invalidSymbol? 42))))
+  )
 
 (deftest test-valid-keyword
   (is (= (js :foo)) "foo")
-  (is (thrown? Exception (js :invalid-symbol))))
+  (is (thrown? Exception (js :invalidSymbol!))))
 
 (deftest test-simple-funcall
   (is (= (js (a b)) "a(b)")))

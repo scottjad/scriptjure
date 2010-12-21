@@ -58,19 +58,33 @@
 (defmethod emit java.lang.String [^String expr]
   (str \" (.replace expr "\"" "\\\"") \"))
 
+;; not using clojure.string/capitalize bc want to-MC-Solar to remain toMCSolar
+(defn capitalize-first [s]              
+  (str (.toUpperCase (.substring s 0 1)) (.substring s 1)))
+
+(defn camel-case [sym]
+  (let [words (.split (name sym) "-")]
+    (apply str (first words) (map capitalize-first (rest words)))))
+
+(defn to-js-identifier
+  "Converts an idiomatic clojure symbol/keyword/string to an idiomatic js
+  identifier. Right now just changes camel-case to camelCase"
+  [ident]
+  (camel-case (name ident)))
+
 (defn valid-symbol? [sym]
   ;;; This is incomplete, it disallows unicode
-  (boolean (re-matches #"[_$\p{Alpha}][.\w]*" (str sym))))
+  (boolean (re-matches #"[_$\p{Alpha}][.\w]*" (to-js-identifier sym))))
 
 (defmethod emit clojure.lang.Keyword [expr]
   (when-not (valid-symbol? (name expr))
     (throwf "%s is not a valid javascript symbol" expr))
-  (str (name expr)))
+  (to-js-identifier expr))
 
 (defmethod emit clojure.lang.Symbol [expr]
   (when-not (valid-symbol? (str expr))
     (throwf "%s is not a valid javascript symbol" expr))
-  (str expr))
+  (to-js-identifier expr))
 
 (defmethod emit java.util.regex.Pattern [expr]
   (str \/ expr \/))
@@ -239,7 +253,8 @@
            (emit-var-declarations) body " }"))))
 
 (defmethod emit-special 'fn [type [fn & expr]]
-  (let [name (when (symbol? (first expr)) (first expr))]
+  (let [name (when (symbol? (first expr))
+               (symbol (to-js-identifier (first expr))))]
     (when name
       (swap! var-declarations conj name))
     (if name
