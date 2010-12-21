@@ -43,8 +43,11 @@
     (str expr statement-separator)
     expr))
 
+(defn expression [& exprs]
+  (str "(" (apply str exprs) ")"))
+
 (defn comma-list [coll]
-  (str "(" (str/join ", " coll) ")"))
+  (expression (str/join ", " coll)))
 
 (defmethod emit nil [expr]
   "null")
@@ -126,8 +129,8 @@
 (defn emit-infix [type [operator & args]]
   (when (and (not (chainable-infix-operators operator)) (> (count args) 2))
     (throw (Exception. (str "operator " operator " supports only 2 arguments"))))
-  (str "(" (str/join (str " " (or (op-substitutions operator) operator) " ")
-                     (map emit args)) ")"))
+  (expression (str/join (str " " (or (op-substitutions operator) operator) " ")
+                     (map emit args))))
 
 (def var-declarations nil)
 
@@ -144,7 +147,7 @@
 
 (defmethod emit-special 'funcall [type [name & args]]
   (str (if (and (list? name) (= 'fn (first name))) ; function literal call
-         (str "(" (emit name) ")")
+         (expression (emit name))
          (emit name))
        (comma-list (map emit args))))
 
@@ -168,7 +171,7 @@
          (str " else { \n"
               (emit (first false-form))
               " }"))))
-       
+
 (defmethod emit-special 'dot-method [type [method obj & args]]
   (let [method (symbol (cstr/drop 1 (str method)))]
     (emit-method obj method args)))
@@ -197,19 +200,19 @@
   (str (emit var) "--"))
 
 (defmethod emit-special 'dec [type [_ var]]
-  (str "(" (emit var) " - " 1 ")"))
+  (expression (emit var) " - " 1))
 
 (defmethod emit-special 'inc [type [_ var]]
-  (str "(" (emit var) " + " 1 ")"))
+  (expression (emit var) " + " 1))
 
 (defmethod emit-special 'typeof [type [_ var comp type]]
-  (str "(" "typeof " (emit var) " " (op-substitutions (symbol comp)) " " (emit type) ")"))
+  (expression "typeof " (emit var) " " (op-substitutions (symbol comp)) " " (emit type)))
 
 (defmethod emit-special 'defined? [type [_ var]]
-  (str "(" "typeof " (emit var) " !== \"undefined\" && " (emit var) " !== null" ")"))
+  (expression "typeof " (emit var) " !== \"undefined\" && " (emit var) " !== null"))
 
 (defmethod emit-special '? [type [_ test then else]]
-  (str "(" (emit test) " ? " (emit then) " : " (emit else) ")"))
+  (expression (emit test) " ? " (emit then) " : " (emit else)))
 
 (defmethod emit-special 'and [type [_ & more]]
   (apply str (interpose "&&" (map emit more))))
@@ -240,9 +243,8 @@
 
 (defn emit-var-declarations []
   (when-not (empty? @var-declarations)
-    (apply str "var "
-           (str/join ", " (map emit @var-declarations))
-           statement-separator)))
+    (statement (apply str "var "
+                      (str/join ", " (map emit @var-declarations))))))
 
 (defn emit-function [name sig body]
   (assert (or (symbol? name) (nil? name)))
