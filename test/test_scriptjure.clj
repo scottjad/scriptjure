@@ -160,17 +160,23 @@
          "((1 === 2) ? 3 : 4)")))
 
 (deftest test-dec
-  (is (= (strip-whitespace(js (dec x)))
+  (is (= (strip-whitespace (js (dec x)))
          "(x - 1)")))
 
 (deftest test-inc
-  (is (= (strip-whitespace(js (inc x)))
+  (is (= (strip-whitespace (js (inc x)))
          "(x + 1)")))
 
 (deftest test-set!
   (is (= (strip-whitespace (js (set! x 1)))
          "x = 1;"))
-  (is (= (strip-whitespace(js (set! x 1 y 2)))
+  (is (= (strip-whitespace (js (set! x 1 y 2)))
          "x = 1; y = 2;")))
+
+(deftest test-new-sugar
+  (is (= (strip-whitespace (js (foo.)))
+         "new foo()"))
+  (is (= (strip-whitespace (js (foo. 1 2)))
+         "new foo(1, 2)")))
 
 (run-tests)

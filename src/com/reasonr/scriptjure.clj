@@ -185,7 +185,17 @@
 (defmethod emit-special 'set! [type [set! var val & more]]
   (assert (or (nil? more) (even? (count more))))
   (str (emit var) " = " (emit val) statement-separator
-       (if more (str (emit (cons 'set! more))))))
+       (when more (str (emit (cons 'set! more))))))
+
+(defn new-sugar? [sym]
+  (and (not= \. (first (str sym)))
+       (= \. (last (str sym)))))
+
+(defn drop-last-char [s]
+  (apply str (butlast s)))
+
+(defn emit-new-sugar [class & args]
+  (emit (conj (nfirst args) (symbol (drop-last-char (name class))) 'new)))
 
 (defmethod emit-special 'new [type [new class & args]]
   (str "new " (emit class) (comma-list (map emit args))))
@@ -277,22 +287,23 @@
       (cond
        (and (= (cstr/get (str head) 0) \.)
             (> (count (str head)) 1)
-
+            
             (not (= (cstr/get (str head) 1) \.))) (emit-special 'dot-method expr)
+       (new-sugar? head) (emit-new-sugar head expr)     
        (special-form? head) (emit-special head expr)
        (infix-operator? head) (emit-infix head expr)
-        (prefix-unary? head) (emit-prefix-unary head expr)
-        (suffix-unary? head) (emit-suffix-unary head expr)
+       (prefix-unary? head) (emit-prefix-unary head expr)
+       (suffix-unary? head) (emit-suffix-unary head expr)
        :else (emit-special 'funcall expr)))
     (if (list? expr)
       (emit-special 'funcall expr)
       (throw (new Exception (str "invalid form: " expr))))))
 
-(defmethod emit clojure.lang.IPersistentVector [expr]
-  (str "[" (str/join ", " (map emit expr)) "]"))
+(derive clojure.lang.LazySeq ::vector)
+(derive clojure.lang.IPersistentVector ::vector)
 
-(defmethod emit clojure.lang.LazySeq [expr]
-  (emit (into [] expr)))
+(defmethod emit ::vector [expr]
+  (str "[" (str/join ", " (map emit expr)) "]"))
 
 (defmethod emit clojure.lang.IPersistentMap [expr]
   (letfn [(json-pair [pair] (str (emit (key pair)) ": " (emit (val pair))))]
