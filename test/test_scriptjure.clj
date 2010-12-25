@@ -75,15 +75,15 @@
 
 (deftest test-if
   (is (= (strip-whitespace (js (if (&& (= foo bar) (!= foo baz)) (.draw google.chart))))
-         "if (((foo === bar) && (foo !== baz))) { google.chart.draw() }"))
+         "((((foo === bar) && (foo !== baz))) ? (google.chart.draw()) : null)"))
   (is (= (strip-whitespace (js (if foo (do (var x 3) (foo x)) (do (var y 4) (bar y)))))
-         "var x, y; if (foo) { x = 3; foo(x); } else { y = 4; bar(y); }")))
+         "var x, y; ((foo) ? (x = 3, foo(x)) : (y = 4, bar(y)))")))
           
 (deftest test-new-operator
   (is (= (js (new google.visualization.ColumnChart (.getElementById document "chart_div"))) "new google.visualization.ColumnChart(document.getElementById(\"chart_div\"))")))
 
 (deftest test-fn
-  (is (= (strip-whitespace (js (fn foo [x] (foo a) (bar b)))) "var foo; foo = function (x) { foo(a); bar(b); }")))
+  (is (= (strip-whitespace (js (fn foo [x] (foo a) (bar b)))) "var foo; foo = function (x) { foo(a); return bar(b); }")))
 
 (deftest test-array
   (is (= (js [1 "2" :foo]) "[1, \"2\", foo]")))
@@ -99,7 +99,7 @@
                                        (fn [] 
                                          (.bind ($j "div-id") "click" 
                                                 (fn [e] 
-                                                  (.cookie $j "should-display-make-public" true))))))) "$j(document).ready(function () { $j(\"div-id\").bind(\"click\", function (e) { $j.cookie(\"should-display-make-public\", true); }); })" )))
+                                                  (.cookie $j "should-display-make-public" true))))))) "$j(document).ready(function () { return $j(\"div-id\").bind(\"click\", function (e) { return $j.cookie(\"should-display-make-public\", true); }); })" )))
 
 (deftest test-do
   (is (= (strip-whitespace 
@@ -123,7 +123,7 @@
                        (var x 3)
                        (var y 4)))]
     (is (= (strip-whitespace (js (fn foo [x] (clj stuff))))
-           "var foo; foo = function (x) { var x, y; x = 3; y = 4; }"))))
+           "var foo; foo = function (x) { var x, y; x = 3; return y = 4; }"))))
 
 (deftest test-js*-adds-implicit-do
   (let [one (js* (var x 3)
@@ -178,5 +178,17 @@
          "new foo()"))
   (is (= (strip-whitespace (js (foo. 1 2)))
          "new foo(1, 2)")))
+
+(deftest test-when
+  (is (= (strip-whitespace (js (when true 1 2)))
+         "((true) ? ((1, 2)) : null)")))
+
+(deftest test-let
+  (is (= (strip-whitespace (js (let [a 1 b (inc a)] b)))
+         "(function () { var a, b; a = 1; b = (a + 1); return b; })()")))
+
+(deftest test-cond
+  (is (= (strip-whitespace (js (cond true 2 :else 4)))
+         "((true) ? (2) : (4))")))
 
 (run-tests)

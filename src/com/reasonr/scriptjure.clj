@@ -38,6 +38,26 @@
 
 (def statement-separator ";\n")
 
+(def in-if-body false)
+
+(defn add-meta [expr m]
+  (with-meta expr (merge (meta m) m)))
+
+(defn add-return [expr]
+  (cond (and (list? expr) (= 'do (first expr))) (add-meta expr {:return true})
+        (and (list? expr) (= 'return (first expr))) expr
+        :else (list 'return expr)))
+
+(defn maybe-return [expr]
+  ((if (:return (meta expr)) add-return identity) expr))
+
+(defn update-last [f lst]
+  (concat (butlast  lst) (list (f (last lst)))))
+
+(defn implicit-return [expr]
+  (if (and (list? expr) (not (empty? expr)))
+    (update-last add-return expr)))
+
 (defn statement [expr]
   (if (not (= statement-separator (cstr/tail (count statement-separator) expr)))
     (str expr statement-separator)
@@ -95,7 +115,7 @@
 (defmethod emit :default [expr]
   (str expr))
 
-(def special-forms (set ['var '. '.. 'if 'funcall 'fn 'quote 'set! 'return 'delete 'new 'do 'aget 'while 'doseq 'str 'inc! 'dec! 'dec 'inc 'defined? 'and 'or '? 'typeof]))
+(def special-forms (set ['var '. '.. 'if 'funcall 'fn 'quote 'set! 'return 'delete 'new 'do 'aget 'while 'doseq 'str 'inc! 'dec! 'dec 'inc 'defined? 'and 'or '? 'typeof 'when 'cond 'let]))
 
 (def prefix-unary-operators (set ['!]))
 
@@ -139,11 +159,15 @@
      ~@body))
 
 (defmethod emit-special 'var [type [var & more]]
-  (apply swap! var-declarations conj (filter identity (map (fn [name i] (when (odd? i) name)) more (iterate inc 1))))
-  (apply str (interleave (map (fn [[name expr]]
-                                (str (when-not var-declarations "var ") (emit name) " = " (emit expr)))
-                              (partition 2 more))
-                         (repeat statement-separator))))
+  (apply swap! var-declarations conj
+         (filter identity (map (fn [name i] (when (odd? i) name)) more (iterate inc 1))))
+  (let [m (map (fn [[name expr]]
+                 (str (when-not var-declarations "var ")
+                      (emit name) " = " (emit expr)))
+               (partition 2 more))]
+    (apply str (if in-if-body
+                 (interpose "," m)
+                 (interleave m (repeat statement-separator))))))
 
 (defmethod emit-special 'funcall [type [name & args]]
   (str (if (and (list? name) (= 'fn (first name))) ; function literal call
@@ -163,14 +187,29 @@
 (defmethod emit-special '.. [type [dotdot & args]]
   (apply str (interpose "." (map emit args))))
 
-(defmethod emit-special 'if [type [if test true-form & false-form]]
-  (str "if (" (emit test) ") { \n"
-       (emit true-form)
-       "\n }"
-       (when (first false-form)
-         (str " else { \n"
-              (emit (first false-form))
-              " }"))))
+;; (defmethod emit-special 'if [type [_ test true-form & false-form :as expr]]
+;;   (str "if (" (emit test) ") { \n"
+;;        (emit (maybe-return (add-meta true-form {:if true})))
+;;        "\n }"
+;;        (when (first false-form)
+;;          (str " else { \n"
+;;               (emit (maybe-return
+;;                      (add-meta (first false-form) {:if true})))
+;;               " }"))))
+
+(defn ensure-do [expr]
+  (if (and (list? expr) (= 'do (first expr)))
+    expr
+    (list 'do expr)))
+
+(defmethod emit-special 'if [type [_ test true-form & false-form :as expr]]
+  (expression "(" (emit test) ") ? "
+              (binding [in-if-body true]
+                (emit (maybe-return (ensure-do true-form))))
+              " : "
+              (binding [in-if-body true]
+                (emit (when (first false-form)
+                        (maybe-return (ensure-do (first false-form))))))))
 
 (defmethod emit-special 'dot-method [type [method obj & args]]
   (let [method (symbol (cstr/drop 1 (str method)))]
@@ -184,7 +223,7 @@
 
 (defmethod emit-special 'set! [type [set! var val & more]]
   (assert (or (nil? more) (even? (count more))))
-  (str (emit var) " = " (emit val) statement-separator
+  (str (emit var) " = " (emit val) (if in-if-body statement-separator ",")
        (when more (str (emit (cons 'set! more))))))
 
 (defn new-sugar? [sym]
@@ -234,10 +273,15 @@
   (apply str more))
 
 (defn emit-do [exprs]
-  (str/join "" (map (comp statement emit) exprs)))
+  (if in-if-body
+    (comma-list (map emit exprs))
+    (str/join "" (map (comp statement emit)
+                      ((if (:return (meta exprs))
+                         (fn [exprs] (update-last #(add-return %) exprs))
+                         identity) exprs)))))
 
-(defmethod emit-special 'do [type [ do & exprs]]
-  (emit-do exprs))
+(defmethod emit-special 'do [type [ do & exprs :as expr]]
+  (emit-do (add-meta exprs (meta expr))))
 
 (defmethod emit-special 'while [type [while test & body]]
   (str "while (" (emit test) ") { \n"
@@ -260,7 +304,7 @@
   (assert (or (symbol? name) (nil? name)))
   (assert (vector? sig))
   (with-var-declarations
-    (let [body (emit-do body)]
+    (let [body (emit-do (implicit-return body))]
       (str "function " (comma-list sig) " {\n"
            (emit-var-declarations) body " }"))))
 
@@ -277,13 +321,31 @@
             body (rest expr)]
         (str (emit-function nil signature body))))))
 
+(defmethod emit-special 'when [type [_ test & body]]
+  (let [result (list 'if test (cons 'do body))]
+    (binding [in-if-body true]
+      (emit result))))
+
+(defmethod emit-special 'cond [type [_ & [test then & ps :as pairs]]]
+  (assert (even? (count pairs)))
+  (emit (list 'if test
+              then
+              (if (= 2 (count ps))
+                (second ps)
+                (list* 'cond ps)))))
+
+(defmethod emit-special 'let [type [_ bindings & body]]
+  (emit (list (list 'fn []
+                    (cons 'var bindings)
+                    (cons 'do body)))))
+
 (derive clojure.lang.Cons ::list)
 (derive clojure.lang.IPersistentList ::list)
 
 (defmethod emit ::list [expr]
   (if (symbol? (first expr))
     (let [head (symbol (name (first expr))) ; remove any ns resolution
-          expr (conj (rest expr) head)]
+          expr (with-meta (conj (rest expr) head) (meta expr))]
       (cond
        (and (= (cstr/get (str head) 0) \.)
             (> (count (str head)) 1)
