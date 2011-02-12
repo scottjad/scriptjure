@@ -23,12 +23,10 @@
 (deftest test-invalid-variables-throw
   (is (= (js valid_symbol)  "valid_symbol"))
   (is (= (js valid-symbol) "validSymbol"))
-  (is (thrown? Exception (js (var invalidSymbol? 42))))
   )
 
 (deftest test-valid-keyword
-  (is (= (js :foo)) "foo")
-  (is (thrown? Exception (js :invalidSymbol!))))
+  (is (= (js :foo)) "foo"))
 
 (deftest test-simple-funcall
   (is (= (js (a b)) "a(b)")))

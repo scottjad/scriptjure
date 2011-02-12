@@ -73,7 +73,7 @@
   "Converts an idiomatic clojure symbol/keyword/string to an idiomatic js
   identifier. Right now just changes camel-case to camelCase"
   [ident]
-  (camel-case (name ident)))
+  (.replace (.replace (camel-case (name ident)) "?" "P") "!" "Bang"))
 
 (defn valid-symbol? [sym]
   ;;; This is incomplete, it disallows unicode
