@@ -261,7 +261,7 @@
   (assert (vector? sig))
   (with-var-declarations
     (let [body (emit-do body)]
-      (str "function " (comma-list sig) " {\n"
+      (str "function " (comma-list (map emit sig)) " {\n"
            (emit-var-declarations) body " }"))))
 
 (defmethod emit-special 'fn [type [fn & expr]]

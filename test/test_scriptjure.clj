@@ -177,4 +177,11 @@
   (is (= (strip-whitespace (js (foo. 1 2)))
          "new foo(1, 2)")))
 
+(deftest test-js-identifiers
+  (are [c j] (= (strip-whitespace (js c)) j)
+       foo-bar "fooBar"
+       foo! "fooBang"
+       foo? "fooP"
+       (fn a [b-c]) "var a; a = function (bC) { }"))  
+
 (run-tests)
