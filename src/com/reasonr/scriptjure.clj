@@ -95,7 +95,7 @@
 (defmethod emit :default [expr]
   (str expr))
 
-(def special-forms (set ['var '. '.. 'if 'funcall 'fn 'quote 'set! 'return 'delete 'new 'do 'aget 'while 'doseq 'str 'inc! 'dec! 'dec 'inc 'defined? 'and 'or '? 'typeof]))
+(def special-forms (set ['var '. '.. 'if 'funcall 'fn 'quote 'set! 'return 'delete 'new 'do 'aget 'while 'doseq 'str 'inc! 'dec! 'dec 'inc 'defined? 'and 'or '? 'typeof 'deref]))
 
 (def prefix-unary-operators (set ['!]))
 
@@ -217,6 +217,9 @@
 
 (defmethod emit-special 'typeof [type [_ var comp type]]
   (expression "typeof " (emit var) " " (op-substitutions (symbol comp)) " " (emit type)))
+
+(defmethod emit-special 'deref [type [_ var]]
+  (str "this."(emit var)))
 
 (defmethod emit-special 'defined? [type [_ var]]
   (expression "typeof " (emit var) " !== \"undefined\" && " (emit var) " !== null"))

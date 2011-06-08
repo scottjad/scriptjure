@@ -184,4 +184,8 @@
        foo? "fooP"
        (fn a [b-c]) "var a; a = function (bC) { }"))  
 
+(deftest test-this-syntax
+  (is (= (js @foo) "this.foo"))
+  (is (= (js (@foo) "this.foo()"))))
+
 (run-tests)
