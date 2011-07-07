@@ -145,11 +145,16 @@
                               (partition 2 more))
                          (repeat statement-separator))))
 
+(defn emit-key-lookup [key [map]]
+  (emit `(aget ~map ~(name key))))
+
 (defmethod emit-special 'funcall [type [name & args]]
-  (str (if (and (list? name) (= 'fn (first name))) ; function literal call
-         (expression (emit name))
-         (emit name))
-       (comma-list (map emit args))))
+  (if (keyword? name)
+    (emit-key-lookup name args)
+    (str (if (and (list? name) (= 'fn (first name))) ; function literal call
+           (expression (emit name))
+           (emit name))
+         (comma-list (map emit args)))))
 
 (defmethod emit-special 'str [type [str & args]]
   (apply clojure.core/str (interpose " + " (map emit args))))

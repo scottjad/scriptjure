@@ -188,4 +188,8 @@
   (is (= (js @foo) "this.foo"))
   (is (= (js (@foo) "this.foo()"))))
 
+
+(deftest test-key-lookup
+  (is (= (js (:foo a)) "a[\"foo\"]")))
+
 (run-tests)
