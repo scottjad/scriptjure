@@ -146,7 +146,7 @@
                          (repeat statement-separator))))
 
 (defn emit-key-lookup [key [map]]
-  (emit `(aget ~map ~(name key))))
+  (emit `(aget ~map ~(to-js-identifier (name key)))))
 
 (defmethod emit-special 'funcall [type [name & args]]
   (if (keyword? name)

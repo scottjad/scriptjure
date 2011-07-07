@@ -190,6 +190,6 @@
 
 
 (deftest test-key-lookup
-  (is (= (js (:foo a)) "a[\"foo\"]")))
+  (is (= (js (:foo-bar a)) "a[\"fooBar\"]")))
 
 (run-tests)
